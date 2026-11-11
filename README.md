@@ -64,12 +64,10 @@ python3 scripts/make_icon.py caminho/da/logo.png   # gera build/icon.icns, build
 
 ### Publicar uma nova versão
 
-1. Altere `version` em `package.json` (ex.: `1.1.0`) e faça commit.
-2. Crie e envie a tag:
-   ```bash
-   git tag v1.1.0 && git push origin main v1.1.0
-   ```
-3. O GitHub Actions compila o app universal, gera `Editor-Rifa-mac.dmg`, `Editor-Rifa-mac.zip` e `SHA256SUMS.txt` e publica o release. Quem usa o app recebe o aviso de atualização.
+1. Altere `version` em `package.json` (ex.: `1.1.0`), faça commit e envie para a `main`.
+2. O GitHub Actions detecta que `v1.1.0` ainda não existe, compila o app universal, gera `Editor-Rifa-mac.dmg`, `Editor-Rifa-mac.zip` e `SHA256SUMS.txt`, cria a tag e publica o release. Quem usa o app recebe o aviso de atualização.
+
+Commits que não mudam a versão não publicam nada.
 
 ### Sobre a assinatura
 
