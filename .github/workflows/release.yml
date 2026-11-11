@@ -36,7 +36,7 @@ jobs:
   build-mac:
     needs: check
     if: needs.check.outputs.publish == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
