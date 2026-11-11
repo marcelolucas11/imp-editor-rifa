@@ -1,0 +1,84 @@
+name: Build e Release (macOS)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Conferir se a tag bate com a versão do package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "v$PKG" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME difere da versão do package.json (v$PKG)"; exit 1
+          fi
+
+      - run: npm test
+
+      - name: Compilar app universal (Apple Silicon + Intel)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run build:mac
+
+      - name: Assinar (ad-hoc), validar e empacotar ZIP + DMG
+        run: |
+          set -euo pipefail
+          APP="dist/mac-universal/Editor Rifa.app"
+          test -d "$APP"
+          codesign --force --deep --sign - --timestamp=none "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "Arquiteturas: $(lipo -archs "$APP/Contents/MacOS/Editor Rifa")"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist"
+
+          mkdir -p release
+          # ZIP: usado pelo botão "Atualizar" dentro do app
+          ditto -c -k --sequesterRsrc --keepParent "$APP" release/Editor-Rifa-mac.zip
+          # DMG: instalador (arrastar para Aplicativos)
+          rm -rf dmg-src && mkdir dmg-src
+          cp -R "$APP" dmg-src/
+          ln -s /Applications dmg-src/Applications
+          hdiutil create -volname "Editor Rifa" -srcfolder dmg-src -ov -format UDZO -fs HFS+ release/Editor-Rifa-mac.dmg
+          (cd release && shasum -a 256 Editor-Rifa-mac.zip Editor-Rifa-mac.dmg | tee SHA256SUMS.txt)
+
+      - name: Publicar release no GitHub
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'NOTES'
+          ### Como instalar
+          1. Baixe **Editor-Rifa-mac.dmg** abaixo, abra e arraste o app para **Aplicativos**.
+          2. Na primeira abertura o macOS avisa que o app não é de um desenvolvedor identificado (o app não é notarizado pela Apple). Vá em **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
+             Alternativa pelo Terminal: `xattr -cr "/Applications/Editor Rifa.app"`
+          3. As próximas versões chegam pelo botão **Atualizar** dentro do app.
+
+          Funciona em Mac com chip Apple (M1/M2/M3/M4) e Intel, macOS 11 ou superior.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --title "Editor Rifa ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md \
+            --generate-notes
+
+      - name: Guardar artefatos (execução manual)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-rifa-mac
+          path: release/*

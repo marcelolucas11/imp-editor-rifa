@@ -1,0 +1,8 @@
+node_modules/
+dist/
+src/styles/app.css
+src/fonts/
+src/vendor/jszip.min.js
+.DS_Store
+*.log
+src/styles/fonts.css

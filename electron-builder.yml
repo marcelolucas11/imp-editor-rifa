@@ -1,0 +1,22 @@
+appId: br.com.impera.editorrifa
+productName: Editor Rifa
+copyright: "Copyright © 2026 Impera Services"
+directories:
+  output: dist
+  buildResources: build
+asar: true
+files:
+  - electron/**/*
+  - src/**/*
+  - "!src/styles/input.css"
+  - package.json
+mac:
+  category: public.app-category.graphics-design
+  icon: build/icon.icns
+  darkModeSupport: true
+  minimumSystemVersion: "11.0"
+  target:
+    - target: dir
+  extendInfo:
+    NSHumanReadableCopyright: "© 2026 Impera Services"
+    LSApplicationCategoryType: public.app-category.graphics-design
